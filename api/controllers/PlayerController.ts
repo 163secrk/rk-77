@@ -1,13 +1,17 @@
 import { Server, Socket } from 'socket.io';
 import { PlayerService } from '../services/PlayerService.js';
+import { RoomService } from '../services/RoomService.js';
 
 export class PlayerController {
   private io: Server;
   private playerService: PlayerService;
 
+  private roomService: RoomService;
+
   constructor(io: Server) {
     this.io = io;
     this.playerService = new PlayerService();
+    this.roomService = new RoomService();
   }
 
   handleGetPlayerInfo(socket: Socket): void {
@@ -62,9 +66,8 @@ export class PlayerController {
 
       this.playerService.removePlayer(targetPlayer.socketId);
 
-      const room = this.playerService['store'].getRoom(roomId);
-      if (room) {
-        const players = Array.from(room.players.values()).sort((a, b) => a.seatNumber - b.seatNumber);
+      const players = this.roomService.getPlayers(roomId);
+      if (players.length > 0) {
         this.io.to(roomId).emit('players:update', { players });
 
         this.io.to(roomId).emit('chat:message', {

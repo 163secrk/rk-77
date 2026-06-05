@@ -35,8 +35,8 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
   };
 
   return (
-    <div className="bg-emerald-950/80 backdrop-blur rounded-2xl border border-emerald-700/50 h-full flex flex-col">
-      <div className="px-4 py-3 border-b border-emerald-700/50 flex items-center gap-2">
+    <div className="bg-emerald-950/80 backdrop-blur rounded-2xl border border-emerald-700/50 h-full flex flex-col min-h-0">
+      <div className="px-4 py-3 border-b border-emerald-700/50 flex items-center gap-2 flex-shrink-0">
         <MessageCircle size={18} className="text-amber-400" />
         <h2 className="text-lg font-bold text-amber-200" style={{ fontFamily: "'Playfair Display', serif" }}>
           聊天
@@ -46,7 +46,7 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
         {messages.length === 0 ? (
           <div className="text-center text-emerald-400 py-8 text-sm">
             还没有消息，开始聊天吧~
@@ -58,8 +58,8 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
 
             if (isSystem) {
               return (
-                <div key={msg.id} className="flex justify-center">
-                  <div className="bg-emerald-800/50 text-emerald-300 text-xs px-4 py-1.5 rounded-full max-w-xs text-center">
+                <div key={msg.id} className="flex justify-center flex-shrink-0">
+                  <div className="bg-emerald-800/50 text-emerald-300 text-xs px-4 py-1.5 rounded-full max-w-xs text-center break-words">
                     {msg.content}
                   </div>
                 </div>
@@ -69,20 +69,20 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
             return (
               <div
                 key={msg.id}
-                className={`flex gap-2 ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}
+                className={`flex gap-2 ${isSelf ? 'flex-row-reverse' : 'flex-row'} flex-shrink-0`}
               >
                 <div className="text-2xl flex-shrink-0 w-8 h-8 rounded-full bg-emerald-800/50 flex items-center justify-center">
                   {msg.avatar}
                 </div>
 
-                <div className={`max-w-[70%] ${isSelf ? 'items-end' : 'items-start'} flex flex-col`}>
+                <div className={`max-w-[calc(100%-3rem)] ${isSelf ? 'items-end' : 'items-start'} flex flex-col min-w-0`}>
                   <div className={`flex items-center gap-2 mb-1 ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <span className="text-xs text-emerald-400 font-medium">{msg.nickname}</span>
-                    <span className="text-xs text-emerald-500">{formatTime(msg.timestamp)}</span>
+                    <span className="text-xs text-emerald-400 font-medium truncate max-w-[120px]">{msg.nickname}</span>
+                    <span className="text-xs text-emerald-500 flex-shrink-0">{formatTime(msg.timestamp)}</span>
                   </div>
 
                   <div
-                    className={`px-4 py-2 rounded-2xl break-words
+                    className={`px-4 py-2 rounded-2xl break-words overflow-hidden
                       ${isSelf
                         ? 'bg-gradient-to-r from-amber-700 to-amber-600 text-white rounded-tr-sm'
                         : 'bg-emerald-800/70 text-emerald-100 rounded-tl-sm'
@@ -95,10 +95,10 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
             );
           })
         )}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="flex-shrink-0" />
       </div>
 
-      <form onSubmit={handleSubmit} className="p-3 border-t border-emerald-700/50">
+      <form onSubmit={handleSubmit} className="p-3 border-t border-emerald-700/50 flex-shrink-0">
         <div className="flex gap-2">
           <textarea
             value={input}
@@ -112,7 +112,7 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
           <button
             type="submit"
             disabled={!input.trim()}
-            className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1"
+            className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1 flex-shrink-0"
           >
             <Send size={18} />
           </button>

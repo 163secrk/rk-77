@@ -13,7 +13,7 @@ export default function Room() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { nickname, avatar } = useUserStore();
-  const { roomId: storeRoomId, roomName, players, messages, isConnected } = useRoomStore();
+  const { roomId: storeRoomId, roomName, players, messages, isConnected, isKicked, isLeaving } = useRoomStore();
   const { players: roomPlayers, joinRoom, leaveRoom, sendMessage, toggleReady, kickPlayer } = useRoom();
 
   const [isChecking, setIsChecking] = useState(true);
@@ -34,7 +34,7 @@ export default function Room() {
           return;
         }
 
-        if (!isConnected && !storeRoomId) {
+        if (!isConnected && !storeRoomId && !isKicked && !isLeaving) {
           if (!nickname || !avatar) {
             navigate('/');
             return;
@@ -54,7 +54,7 @@ export default function Room() {
     };
 
     checkRoom();
-  }, [roomId, navigate, nickname, avatar, isConnected, storeRoomId, joinRoom]);
+  }, [roomId, navigate, nickname, avatar, isConnected, storeRoomId, isKicked, isLeaving, joinRoom]);
 
   if (isChecking) {
     return (

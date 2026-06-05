@@ -12,6 +12,8 @@ interface RoomStore extends RoomState {
   setMessages: (messages: Message[]) => void;
   setOwnerId: (ownerId: string | null) => void;
   setIsConnected: (connected: boolean) => void;
+  setIsKicked: (isKicked: boolean) => void;
+  setIsLeaving: (isLeaving: boolean) => void;
   resetRoom: () => void;
 }
 
@@ -22,6 +24,8 @@ export const useRoomStore = create<RoomStore>((set) => ({
   messages: [],
   ownerId: null,
   isConnected: false,
+  isKicked: false,
+  isLeaving: false,
 
   setRoomId: (roomId) => set({ roomId }),
   setRoomName: (roomName) => set({ roomName }),
@@ -47,6 +51,8 @@ export const useRoomStore = create<RoomStore>((set) => ({
   setMessages: (messages) => set({ messages }),
   setOwnerId: (ownerId) => set({ ownerId }),
   setIsConnected: (isConnected) => set({ isConnected }),
+  setIsKicked: (isKicked) => set({ isKicked }),
+  setIsLeaving: (isLeaving) => set({ isLeaving }),
   resetRoom: () =>
     set({
       roomId: null,
@@ -55,5 +61,7 @@ export const useRoomStore = create<RoomStore>((set) => ({
       messages: [],
       ownerId: null,
       isConnected: false,
+      isKicked: false,
+      isLeaving: false,
     }),
 }));

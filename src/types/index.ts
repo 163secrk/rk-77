@@ -46,6 +46,8 @@ export interface RoomState {
   messages: Message[];
   ownerId: string | null;
   isConnected: boolean;
+  isKicked: boolean;
+  isLeaving: boolean;
 }
 
 export const AVATARS = ['🦁', '🐯', '🐻', '🐼', '🦊', '🐰', '🐸', '🐵', '🐨', '🐮', '🐷', '🐴'];

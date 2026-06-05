@@ -63,20 +63,16 @@ export class RoomController {
   handleJoinRoom(socket: Socket, data: { roomId: string; nickname: string; avatar: string }): void {
     try {
       const { roomId, nickname, avatar } = data;
+      const normalizedRoomId = roomId.toUpperCase();
 
       if (!roomId || !nickname || !avatar) {
         socket.emit('error', { message: '房间ID、昵称和头像不能为空', code: 'INVALID_DATA' });
         return;
       }
 
-      const roomInfo = this.roomService.getRoomInfo(roomId.toUpperCase());
+      const roomInfo = this.roomService.getRoomInfo(normalizedRoomId);
       if (!roomInfo) {
         socket.emit('error', { message: '房间不存在', code: 'ROOM_NOT_FOUND' });
-        return;
-      }
-
-      if (this.roomService.isRoomFull(roomId.toUpperCase())) {
-        socket.emit('error', { message: '房间已满', code: 'ROOM_FULL' });
         return;
       }
 
@@ -85,36 +81,41 @@ export class RoomController {
         this.handleLeaveRoom(socket, { roomId: existingPlayer.roomId });
       }
 
-      const player = this.playerService.createPlayer(socket.id, nickname, avatar, roomId.toUpperCase());
-      socket.join(roomId.toUpperCase());
+      const reconnectablePlayer = this.playerService.findReconnectablePlayer(normalizedRoomId, nickname);
+      let player: Player;
+      let isReconnect = false;
 
-      const systemMessage = this.roomService.addSystemMessage(
-        roomId.toUpperCase(),
-        `${player.nickname} 加入了房间`
-      );
-
-      socket.emit('room:joined', {
-        roomId: roomId.toUpperCase(),
-        roomName: roomInfo.name,
-        player,
-      });
-
-      const players = this.roomService.getPlayers(roomId.toUpperCase());
-      this.io.to(roomId.toUpperCase()).emit('players:update', { players });
-
-      if (systemMessage) {
-        this.io.to(roomId.toUpperCase()).emit('chat:message', {
-          id: systemMessage.id,
-          playerId: systemMessage.playerId,
-          nickname: systemMessage.nickname,
-          avatar: systemMessage.avatar,
-          content: systemMessage.content,
-          timestamp: systemMessage.timestamp.getTime(),
-          isSystem: true,
-        });
+      if (reconnectablePlayer && reconnectablePlayer.avatar === avatar) {
+        player = this.playerService.reconnectPlayer(reconnectablePlayer, socket.id);
+        isReconnect = true;
+      } else {
+        if (this.roomService.isRoomFull(normalizedRoomId)) {
+          socket.emit('error', { message: '房间已满', code: 'ROOM_FULL' });
+          return;
+        }
+        player = this.playerService.createPlayer(socket.id, nickname, avatar, normalizedRoomId);
       }
 
-      const messages = this.roomService.getRecentMessages(roomId.toUpperCase());
+      socket.join(normalizedRoomId);
+
+      if (!isReconnect) {
+        this.roomService.addSystemMessage(
+          normalizedRoomId,
+          `${player.nickname} 加入了房间`
+        );
+      }
+
+      socket.emit('room:joined', {
+        roomId: normalizedRoomId,
+        roomName: roomInfo.name,
+        player,
+        isReconnect,
+      });
+
+      const players = this.roomService.getPlayers(normalizedRoomId);
+      this.io.to(normalizedRoomId).emit('players:update', { players });
+
+      const messages = this.roomService.getRecentMessages(normalizedRoomId);
       messages.forEach((msg) => {
         socket.emit('chat:message', {
           id: msg.id,
@@ -199,9 +200,16 @@ export class RoomController {
   }
 
   handleDisconnect(socket: Socket): void {
-    const player = this.playerService.getPlayer(socket.id);
+    const player = this.playerService.markPlayerDisconnected(socket.id);
     if (player) {
-      this.handleLeaveRoom(socket, { roomId: player.roomId });
+      const room = this.roomService['store'].getRoom(player.roomId);
+      if (room) {
+        const activePlayers = Array.from(room.players.values()).filter(p => !p.isDisconnected);
+        if (activePlayers.length > 0) {
+          const players = this.roomService.getPlayers(player.roomId);
+          this.io.to(player.roomId).emit('players:update', { players });
+        }
+      }
     }
   }
 

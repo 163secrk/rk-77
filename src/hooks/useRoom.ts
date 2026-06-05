@@ -16,6 +16,7 @@ interface RoomJoinedResponse {
   roomId: string;
   roomName: string;
   player: Player;
+  isReconnect?: boolean;
 }
 
 interface PlayersUpdateResponse {
@@ -35,6 +36,8 @@ export function useRoom() {
     addMessage,
     setOwnerId,
     setIsConnected,
+    setIsKicked,
+    setIsLeaving,
     resetRoom,
   } = useRoomStore();
 
@@ -48,12 +51,13 @@ export function useRoom() {
 
   const leaveRoom = useCallback(() => {
     if (roomId) {
+      setIsLeaving(true);
       emit<{ roomId: string }>('room:leave', { roomId });
       resetUser();
       resetRoom();
       navigate('/');
     }
-  }, [emit, roomId, resetUser, resetRoom, navigate]);
+  }, [emit, roomId, setIsLeaving, resetUser, resetRoom, navigate]);
 
   const sendMessage = useCallback((content: string) => {
     if (roomId) {
@@ -107,10 +111,17 @@ export function useRoom() {
     };
 
     const handlePlayerKicked = (data: { message: string }) => {
-      alert(data.message);
+      setIsKicked(true);
       resetUser();
       resetRoom();
       navigate('/');
+      setTimeout(() => {
+        alert(data.message);
+      }, 100);
+    };
+
+    const handleRoomLeft = (_data: { roomId: string }) => {
+      setIsLeaving(false);
     };
 
     const handleError = (data: { message: string; code: string }) => {
@@ -122,6 +133,7 @@ export function useRoom() {
     on<PlayersUpdateResponse>('players:update', handlePlayersUpdate);
     on<Message>('chat:message', handleChatMessage);
     on<{ message: string }>('player:kicked', handlePlayerKicked);
+    on<{ roomId: string }>('room:left', handleRoomLeft);
     on<{ message: string; code: string }>('error', handleError);
 
     return () => {
@@ -130,6 +142,7 @@ export function useRoom() {
       off<PlayersUpdateResponse>('players:update', handlePlayersUpdate);
       off<Message>('chat:message', handleChatMessage);
       off<{ message: string }>('player:kicked', handlePlayerKicked);
+      off<{ roomId: string }>('room:left', handleRoomLeft);
       off<{ message: string; code: string }>('error', handleError);
     };
   }, [
@@ -141,6 +154,8 @@ export function useRoom() {
     setPlayerId,
     setUserRoomId,
     setIsConnected,
+    setIsKicked,
+    setIsLeaving,
     setPlayers,
     addMessage,
     resetUser,

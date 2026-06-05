@@ -35,14 +35,16 @@ export class RoomService {
     const room = this.store.getRoom(roomId);
     if (!room) return null;
 
+    const activePlayers = Array.from(room.players.values()).filter(p => !p.isDisconnected);
+
     return {
       id: room.id,
       name: room.name,
       ownerId: room.ownerId,
       maxPlayers: room.maxPlayers,
-      currentPlayers: room.currentPlayers,
+      currentPlayers: activePlayers.length,
       status: room.status,
-      players: Array.from(room.players.values()),
+      players: activePlayers,
       createdAt: room.createdAt.toISOString(),
     };
   }
@@ -50,14 +52,17 @@ export class RoomService {
   getPlayers(roomId: string): Player[] {
     const room = this.store.getRoom(roomId);
     if (!room) return [];
-    return Array.from(room.players.values()).sort((a, b) => a.seatNumber - b.seatNumber);
+    return Array.from(room.players.values())
+      .filter(p => !p.isDisconnected)
+      .sort((a, b) => a.seatNumber - b.seatNumber);
   }
 
   getNextSeatNumber(roomId: string): number {
     const room = this.store.getRoom(roomId);
     if (!room) return 1;
 
-    const takenSeats = new Set(Array.from(room.players.values()).map(p => p.seatNumber));
+    const activePlayers = Array.from(room.players.values()).filter(p => !p.isDisconnected);
+    const takenSeats = new Set(activePlayers.map(p => p.seatNumber));
     for (let i = 1; i <= room.maxPlayers; i++) {
       if (!takenSeats.has(i)) return i;
     }
@@ -67,7 +72,8 @@ export class RoomService {
   isRoomFull(roomId: string): boolean {
     const room = this.store.getRoom(roomId);
     if (!room) return true;
-    return room.currentPlayers >= room.maxPlayers;
+    const activePlayers = Array.from(room.players.values()).filter(p => !p.isDisconnected);
+    return activePlayers.length >= room.maxPlayers;
   }
 
   addSystemMessage(roomId: string, content: string): Message | null {

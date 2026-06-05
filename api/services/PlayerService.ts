@@ -38,6 +38,17 @@ export class PlayerService {
     return this.store.getPlayerRoom(socketId);
   }
 
+  markPlayerDisconnected(socketId: string): Player | null {
+    const player = this.store.getPlayerBySocketId(socketId);
+    if (!player) return null;
+
+    player.isDisconnected = true;
+    player.disconnectedAt = new Date();
+    this.store.updatePlayer(player);
+
+    return player;
+  }
+
   removePlayer(socketId: string): Player | null {
     const player = this.store.getPlayerBySocketId(socketId);
     if (!player) return null;
@@ -45,6 +56,31 @@ export class PlayerService {
     this.store.removePlayerFromRoom(player.roomId, player.id);
     this.store.cleanupEmptyRooms();
 
+    return player;
+  }
+
+  findReconnectablePlayer(roomId: string, nickname: string): Player | undefined {
+    const room = this.store.getRoom(roomId);
+    if (!room) return undefined;
+
+    for (const player of room.players.values()) {
+      if (player.nickname === nickname && player.isDisconnected) {
+        const disconnectTime = player.disconnectedAt?.getTime() || 0;
+        const now = Date.now();
+        if (now - disconnectTime < 30000) {
+          return player;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  reconnectPlayer(player: Player, newSocketId: string): Player {
+    player.socketId = newSocketId;
+    player.isDisconnected = false;
+    player.disconnectedAt = undefined;
+    this.store.updatePlayer(player);
+    this.store.updateSocketMapping(newSocketId, player.id);
     return player;
   }
 

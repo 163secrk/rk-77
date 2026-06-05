@@ -7,6 +7,8 @@ export interface Player {
   isReady: boolean;
   seatNumber: number;
   joinedAt: Date;
+  isDisconnected?: boolean;
+  disconnectedAt?: Date;
 }
 
 export interface Message {

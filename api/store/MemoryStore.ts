@@ -85,11 +85,42 @@ export class MemoryStore {
     }
   }
 
+  updateSocketMapping(socketId: string, playerId: string): void {
+    this.socketToPlayer.set(socketId, playerId);
+  }
+
   cleanupEmptyRooms(): void {
     for (const [roomId, room] of this.rooms.entries()) {
-      if (room.players.size === 0) {
-        this.rooms.delete(roomId);
+      const activePlayers = Array.from(room.players.values()).filter(p => !p.isDisconnected);
+      if (room.players.size === 0 || (activePlayers.length === 0 && this.isAllPlayersDisconnectedTooLong(room))) {
+        this.removeRoom(roomId);
       }
     }
+  }
+
+  private isAllPlayersDisconnectedTooLong(room: Room): boolean {
+    const now = Date.now();
+    for (const player of room.players.values()) {
+      if (!player.isDisconnected) return false;
+      const disconnectTime = player.disconnectedAt?.getTime() || 0;
+      if (now - disconnectTime < 30000) return false;
+    }
+    return true;
+  }
+
+  cleanupDisconnectedPlayers(): void {
+    const now = Date.now();
+    for (const room of this.rooms.values()) {
+      for (const [playerId, player] of room.players.entries()) {
+        if (player.isDisconnected && player.disconnectedAt) {
+          if (now - player.disconnectedAt.getTime() >= 30000) {
+            this.socketToPlayer.delete(player.socketId);
+            room.players.delete(playerId);
+            room.currentPlayers = room.players.size;
+          }
+        }
+      }
+    }
+    this.cleanupEmptyRooms();
   }
 }

@@ -4,8 +4,15 @@ import app from './app.js';
 import { RoomController } from './controllers/RoomController.js';
 import { ChatController } from './controllers/ChatController.js';
 import { PlayerController } from './controllers/PlayerController.js';
+import { MemoryStore } from './store/MemoryStore.js';
 
 const PORT = process.env.PORT || 8077;
+
+const store = MemoryStore.getInstance();
+
+setInterval(() => {
+  store.cleanupDisconnectedPlayers();
+}, 10000);
 
 const server = http.createServer(app);
 
