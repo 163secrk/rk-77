@@ -71,7 +71,7 @@ export class RoomService {
 
   isRoomFull(roomId: string): boolean {
     const room = this.store.getRoom(roomId);
-    if (!room) return true;
+    if (!room) return false;
     const activePlayers = Array.from(room.players.values()).filter(p => !p.isDisconnected);
     return activePlayers.length >= room.maxPlayers;
   }

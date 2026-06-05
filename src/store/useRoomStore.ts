@@ -45,9 +45,13 @@ export const useRoomStore = create<RoomStore>((set) => ({
         .sort((a, b) => a.seatNumber - b.seatNumber),
     })),
   addMessage: (message) =>
-    set((state) => ({
-      messages: [...state.messages, message],
-    })),
+    set((state) => {
+      const newMessages = [...state.messages, message];
+      if (newMessages.length > 100) {
+        newMessages.shift();
+      }
+      return { messages: newMessages };
+    }),
   setMessages: (messages) => set({ messages }),
   setOwnerId: (ownerId) => set({ ownerId }),
   setIsConnected: (isConnected) => set({ isConnected }),

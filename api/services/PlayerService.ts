@@ -59,11 +59,14 @@ export class PlayerService {
     return player;
   }
 
-  findReconnectablePlayer(roomId: string, nickname: string): Player | undefined {
+  findReconnectablePlayer(roomId: string, nickname: string, socketId?: string): Player | undefined {
     const room = this.store.getRoom(roomId);
     if (!room) return undefined;
 
     for (const player of room.players.values()) {
+      if (socketId && player.socketId === socketId) {
+        return player;
+      }
       if (player.nickname === nickname && player.isDisconnected) {
         const disconnectTime = player.disconnectedAt?.getTime() || 0;
         const now = Date.now();

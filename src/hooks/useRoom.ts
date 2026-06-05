@@ -54,8 +54,10 @@ export function useRoom() {
       setIsLeaving(true);
       emit<{ roomId: string }>('room:leave', { roomId });
       resetUser();
-      resetRoom();
       navigate('/');
+      setTimeout(() => {
+        resetRoom();
+      }, 100);
     }
   }, [emit, roomId, setIsLeaving, resetUser, resetRoom, navigate]);
 
@@ -113,19 +115,28 @@ export function useRoom() {
     const handlePlayerKicked = (data: { message: string }) => {
       setIsKicked(true);
       resetUser();
-      resetRoom();
       navigate('/');
       setTimeout(() => {
+        resetRoom();
         alert(data.message);
       }, 100);
     };
 
-    const handleRoomLeft = (_data: { roomId: string }) => {
+    const handleRoomLeft = () => {
       setIsLeaving(false);
     };
 
     const handleError = (data: { message: string; code: string }) => {
-      alert(`错误: ${data.message}`);
+      if (data.code === 'ROOM_FULL' || data.code === 'ROOM_NOT_FOUND') {
+        resetUser();
+        navigate('/');
+        setTimeout(() => {
+          resetRoom();
+          alert(`错误: ${data.message}`);
+        }, 100);
+      } else {
+        alert(`错误: ${data.message}`);
+      }
     };
 
     on<RoomCreatedResponse>('room:created', handleRoomCreated);
@@ -133,7 +144,7 @@ export function useRoom() {
     on<PlayersUpdateResponse>('players:update', handlePlayersUpdate);
     on<Message>('chat:message', handleChatMessage);
     on<{ message: string }>('player:kicked', handlePlayerKicked);
-    on<{ roomId: string }>('room:left', handleRoomLeft);
+    on('room:left', handleRoomLeft);
     on<{ message: string; code: string }>('error', handleError);
 
     return () => {
@@ -142,7 +153,7 @@ export function useRoom() {
       off<PlayersUpdateResponse>('players:update', handlePlayersUpdate);
       off<Message>('chat:message', handleChatMessage);
       off<{ message: string }>('player:kicked', handlePlayerKicked);
-      off<{ roomId: string }>('room:left', handleRoomLeft);
+      off('room:left', handleRoomLeft);
       off<{ message: string; code: string }>('error', handleError);
     };
   }, [

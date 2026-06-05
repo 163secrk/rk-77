@@ -77,11 +77,23 @@ export class RoomController {
       }
 
       const existingPlayer = this.playerService.getPlayer(socket.id);
-      if (existingPlayer) {
+      if (existingPlayer && existingPlayer.roomId !== normalizedRoomId) {
         this.handleLeaveRoom(socket, { roomId: existingPlayer.roomId });
       }
 
-      const reconnectablePlayer = this.playerService.findReconnectablePlayer(normalizedRoomId, nickname);
+      if (existingPlayer && existingPlayer.roomId === normalizedRoomId) {
+        const players = this.roomService.getPlayers(normalizedRoomId);
+        socket.emit('room:joined', {
+          roomId: normalizedRoomId,
+          roomName: this.roomService.getRoomInfo(normalizedRoomId)?.name || '',
+          player: existingPlayer,
+          isReconnect: true,
+        });
+        this.io.to(normalizedRoomId).emit('players:update', { players });
+        return;
+      }
+
+      const reconnectablePlayer = this.playerService.findReconnectablePlayer(normalizedRoomId, nickname, socket.id);
       let player: Player;
       let isReconnect = false;
 
