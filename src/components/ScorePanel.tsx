@@ -10,12 +10,13 @@ interface ScorePanelProps {
   gameStatus: 'waiting' | 'playing' | 'finished';
   onUpdateScore?: (updates: Array<{ playerId: string; scoreChange: number }>) => void;
   onResetScores?: () => void;
+  isSpectator?: boolean;
 }
 
-export function ScorePanel({ players, scoreHistory, currentRound, gameStatus, onUpdateScore, onResetScores }: ScorePanelProps) {
+export function ScorePanel({ players, scoreHistory, currentRound, gameStatus, onUpdateScore, onResetScores, isSpectator = false }: ScorePanelProps) {
   const { playerId } = useUserStore();
   const { ownerId } = useRoomStore();
-  const isOwner = playerId === ownerId;
+  const isOwner = !isSpectator && playerId === ownerId;
 
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
 
@@ -37,7 +38,7 @@ export function ScorePanel({ players, scoreHistory, currentRound, gameStatus, on
   };
 
   const handleQuickScore = (playerId: string, amount: number) => {
-    if (onUpdateScore && isOwner && gameStatus === 'playing') {
+    if (onUpdateScore && isOwner && gameStatus === 'playing' && !isSpectator) {
       onUpdateScore([{ playerId, scoreChange: amount }]);
     }
   };
@@ -157,7 +158,7 @@ export function ScorePanel({ players, scoreHistory, currentRound, gameStatus, on
           )}
         </div>
 
-        {isOwner && gameStatus === 'playing' && onResetScores && (
+        {isOwner && gameStatus === 'playing' && onResetScores && !isSpectator && (
           <button
             onClick={onResetScores}
             className="mt-4 w-full py-2 text-xs font-medium bg-emerald-800/50 hover:bg-emerald-700/50 text-emerald-300 rounded-lg transition-colors flex items-center justify-center gap-2"

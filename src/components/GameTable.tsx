@@ -8,8 +8,9 @@ interface GameTableProps {
   gameRules: GameRules;
   gameStatus: 'waiting' | 'playing' | 'finished';
   currentRound: number;
-  onToggleReady: (isReady: boolean) => void;
+  onToggleReady?: (isReady: boolean) => void;
   onStartGame?: () => void;
+  isSpectator?: boolean;
 }
 
 const SEAT_POSITIONS = [
@@ -19,11 +20,11 @@ const SEAT_POSITIONS = [
   { top: '50%', left: '5%', transform: 'translate(-50%, -50%)' },
 ];
 
-export function GameTable({ players, gameRules, gameStatus, currentRound, onToggleReady, onStartGame }: GameTableProps) {
+export function GameTable({ players, gameRules, gameStatus, currentRound, onToggleReady, onStartGame, isSpectator = false }: GameTableProps) {
   const { playerId, isReady } = useUserStore();
   const { ownerId } = useRoomStore();
-  const currentPlayer = players.find((p) => p.id === playerId);
-  const isOwner = playerId === ownerId;
+  const currentPlayer = !isSpectator ? players.find((p) => p.id === playerId) : undefined;
+  const isOwner = !isSpectator && playerId === ownerId;
 
   const readyPlayers = players.filter((p) => p.isReady).length;
   const totalPlayers = players.length;
@@ -36,6 +37,9 @@ export function GameTable({ players, gameRules, gameStatus, currentRound, onTogg
   const getStatusText = () => {
     if (gameStatus === 'playing') {
       return `第 ${currentRound} 局进行中`;
+    }
+    if (isSpectator) {
+      return canStart ? '全部准备就绪，即将开始' : '等待玩家准备';
     }
     if (canStart) {
       return isOwner ? '全部准备就绪，点击开始' : '全部准备就绪，即将开始';
@@ -159,14 +163,22 @@ export function GameTable({ players, gameRules, gameStatus, currentRound, onTogg
         })}
       </div>
 
-      {currentPlayer && (
+      {isSpectator ? (
+        <div className="p-4 border-t border-emerald-700/30">
+          <div className="max-w-md mx-auto">
+            <div className="w-full text-center py-3 bg-emerald-900/30 rounded-xl">
+              <span className="text-emerald-300">👀 您正在观战，使用底部弹幕与其他观战者互动</span>
+            </div>
+          </div>
+        </div>
+      ) : currentPlayer ? (
         <div className="p-4 border-t border-emerald-700/30">
           <div className="max-w-md mx-auto flex gap-3">
             {gameStatus === 'waiting' && (
               <>
                 <button
-                  onClick={() => onToggleReady(!isReady)}
-                  disabled={gameStatus !== 'waiting'}
+                  onClick={() => onToggleReady?.(!isReady)}
+                  disabled={gameStatus !== 'waiting' || !onToggleReady}
                   className={`flex-1 py-3 rounded-xl font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed
                     ${isReady
                       ? 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400'
@@ -175,7 +187,7 @@ export function GameTable({ players, gameRules, gameStatus, currentRound, onTogg
                 >
                   {isReady ? '取消准备' : '准备游戏'}
                 </button>
-                {isOwner && canStart && (
+                {isOwner && canStart && onStartGame && (
                   <button
                     onClick={onStartGame}
                     className="px-6 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center gap-2"
@@ -193,7 +205,7 @@ export function GameTable({ players, gameRules, gameStatus, currentRound, onTogg
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

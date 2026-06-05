@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSocket } from './useSocket';
 import { useUserStore } from '../store/useUserStore';
 import { useRoomStore } from '../store/useRoomStore';
-import { Player, Message, CreateRoomData, JoinRoomData, GameRules, ScoreUpdate, UpdateRoomRulesData } from '../types';
+import { Player, Message, CreateRoomData, JoinRoomData, GameRules, ScoreUpdate, UpdateRoomRulesData, Spectator, Danmaku, JoinSpectatorData } from '../types';
 
 interface RoomCreatedResponse {
   roomId: string;
@@ -21,8 +21,20 @@ interface RoomJoinedResponse {
   gameRules?: GameRules;
 }
 
+interface SpectatorJoinedResponse {
+  roomId: string;
+  roomName: string;
+  spectator: Spectator;
+  gameRules?: GameRules;
+  players: Player[];
+}
+
 interface PlayersUpdateResponse {
   players: Player[];
+}
+
+interface SpectatorsUpdateResponse {
+  spectators: Spectator[];
 }
 
 interface RoomRulesUpdatedResponse {
@@ -42,17 +54,20 @@ interface ScoreUpdatedResponse {
 export function useRoom() {
   const navigate = useNavigate();
   const { emit, on, off } = useSocket();
-  const { setPlayerId, setRoomId: setUserRoomId, setIsReady, resetUser } = useUserStore();
+  const { setPlayerId, setSpectatorId, setRoomId: setUserRoomId, setIsReady, setRole, resetUser } = useUserStore();
   const {
     roomId,
     players,
     gameRules,
     gameStatus,
     currentRound,
+    role,
     setRoomId,
     setRoomName,
     setPlayers,
+    setSpectators,
     addMessage,
+    addDanmaku,
     setOwnerId,
     setIsConnected,
     setIsKicked,
@@ -60,6 +75,7 @@ export function useRoom() {
     setGameRules,
     setGameStatus,
     setCurrentRound,
+    setRole: setRoomRole,
     addScoreUpdate,
     resetRoom,
   } = useRoomStore();
@@ -72,54 +88,68 @@ export function useRoom() {
     emit<JoinRoomData>('room:join', data);
   }, [emit]);
 
+  const joinSpectator = useCallback((data: JoinSpectatorData) => {
+    emit<JoinSpectatorData>('spectator:join', data);
+  }, [emit]);
+
   const leaveRoom = useCallback(() => {
     if (roomId) {
       setIsLeaving(true);
-      emit<{ roomId: string }>('room:leave', { roomId });
+      if (role === 'spectator') {
+        emit<{ roomId: string }>('spectator:leave', { roomId });
+      } else {
+        emit<{ roomId: string }>('room:leave', { roomId });
+      }
       resetUser();
       navigate('/');
       setTimeout(() => {
         resetRoom();
       }, 100);
     }
-  }, [emit, roomId, setIsLeaving, resetUser, resetRoom, navigate]);
+  }, [emit, roomId, role, setIsLeaving, resetUser, resetRoom, navigate]);
 
   const sendMessage = useCallback((content: string) => {
-    if (roomId) {
+    if (roomId && role === 'player') {
       emit<{ roomId: string; content: string }>('chat:send', { roomId, content });
     }
-  }, [emit, roomId]);
+  }, [emit, roomId, role]);
+
+  const sendDanmaku = useCallback((content: string, color?: string) => {
+    if (roomId && role === 'spectator') {
+      emit<{ roomId: string; content: string; color?: string }>('danmaku:send', { roomId, content, color });
+    }
+  }, [emit, roomId, role]);
 
   const toggleReady = useCallback((isReady: boolean) => {
-    if (roomId) {
+    if (roomId && role === 'player') {
       emit<{ roomId: string; isReady: boolean }>('player:ready', { roomId, isReady });
       setIsReady(isReady);
     }
-  }, [emit, roomId, setIsReady]);
+  }, [emit, roomId, role, setIsReady]);
 
   const kickPlayer = useCallback((playerId: string) => {
-    if (roomId) {
+    if (roomId && role === 'player') {
       emit<{ roomId: string; playerId: string }>('player:kick', { roomId, playerId });
     }
-  }, [emit, roomId]);
+  }, [emit, roomId, role]);
 
   const updateRoomRules = useCallback((rules: Partial<GameRules>) => {
-    if (roomId) {
+    if (roomId && role === 'player') {
       emit<UpdateRoomRulesData>('room:rules:update', { roomId, gameRules: rules });
     }
-  }, [emit, roomId]);
+  }, [emit, roomId, role]);
 
   const startGame = useCallback(() => {
-    if (roomId) {
+    if (roomId && role === 'player') {
       emit<{ roomId: string }>('game:start', { roomId });
     }
-  }, [emit, roomId]);
+  }, [emit, roomId, role]);
 
   const updateScore = useCallback((updates: Array<{ playerId: string; scoreChange: number }>) => {
-    if (roomId) {
+    if (roomId && role === 'player') {
       emit<{ roomId: string; updates: Array<{ playerId: string; scoreChange: number }> }>('score:update', { roomId, updates });
     }
-  }, [emit, roomId]);
+  }, [emit, roomId, role]);
 
   useEffect(() => {
     const handleRoomCreated = (data: RoomCreatedResponse) => {
@@ -128,6 +158,8 @@ export function useRoom() {
       setOwnerId(data.ownerId);
       setPlayerId(data.player.id);
       setUserRoomId(data.roomId);
+      setRole('player');
+      setRoomRole('player');
       setIsConnected(true);
       if (data.gameRules) {
         setGameRules(data.gameRules);
@@ -140,7 +172,24 @@ export function useRoom() {
       setRoomName(data.roomName);
       setPlayerId(data.player.id);
       setUserRoomId(data.roomId);
+      setRole('player');
+      setRoomRole('player');
       setIsConnected(true);
+      if (data.gameRules) {
+        setGameRules(data.gameRules);
+      }
+      navigate(`/room/${data.roomId}`);
+    };
+
+    const handleSpectatorJoined = (data: SpectatorJoinedResponse) => {
+      setRoomId(data.roomId);
+      setRoomName(data.roomName);
+      setSpectatorId(data.spectator.id);
+      setUserRoomId(data.roomId);
+      setRole('spectator');
+      setRoomRole('spectator');
+      setIsConnected(true);
+      setPlayers(data.players);
       if (data.gameRules) {
         setGameRules(data.gameRules);
       }
@@ -155,8 +204,16 @@ export function useRoom() {
       }
     };
 
+    const handleSpectatorsUpdate = (data: SpectatorsUpdateResponse) => {
+      setSpectators(data.spectators);
+    };
+
     const handleChatMessage = (message: Message) => {
       addMessage(message);
+    };
+
+    const handleDanmakuMessage = (danmaku: Danmaku) => {
+      addDanmaku(danmaku);
     };
 
     const handlePlayerKicked = (data: { message: string }) => {
@@ -209,8 +266,11 @@ export function useRoom() {
 
     on<RoomCreatedResponse>('room:created', handleRoomCreated);
     on<RoomJoinedResponse>('room:joined', handleRoomJoined);
+    on<SpectatorJoinedResponse>('spectator:joined', handleSpectatorJoined);
     on<PlayersUpdateResponse>('players:update', handlePlayersUpdate);
+    on<SpectatorsUpdateResponse>('spectators:update', handleSpectatorsUpdate);
     on<Message>('chat:message', handleChatMessage);
+    on<Danmaku>('danmaku:message', handleDanmakuMessage);
     on<{ message: string }>('player:kicked', handlePlayerKicked);
     on('room:left', handleRoomLeft);
     on<RoomRulesUpdatedResponse>('room:rules:updated', handleRoomRulesUpdated);
@@ -221,8 +281,11 @@ export function useRoom() {
     return () => {
       off<RoomCreatedResponse>('room:created', handleRoomCreated);
       off<RoomJoinedResponse>('room:joined', handleRoomJoined);
+      off<SpectatorJoinedResponse>('spectator:joined', handleSpectatorJoined);
       off<PlayersUpdateResponse>('players:update', handlePlayersUpdate);
+      off<SpectatorsUpdateResponse>('spectators:update', handleSpectatorsUpdate);
       off<Message>('chat:message', handleChatMessage);
+      off<Danmaku>('danmaku:message', handleDanmakuMessage);
       off<{ message: string }>('player:kicked', handlePlayerKicked);
       off('room:left', handleRoomLeft);
       off<RoomRulesUpdatedResponse>('room:rules:updated', handleRoomRulesUpdated);
@@ -237,12 +300,17 @@ export function useRoom() {
     setRoomName,
     setOwnerId,
     setPlayerId,
+    setSpectatorId,
     setUserRoomId,
+    setRole,
+    setRoomRole,
     setIsConnected,
     setIsKicked,
     setIsLeaving,
     setPlayers,
+    setSpectators,
     addMessage,
+    addDanmaku,
     resetUser,
     resetRoom,
     setGameRules,
@@ -258,10 +326,13 @@ export function useRoom() {
     gameRules,
     gameStatus,
     currentRound,
+    role,
     createRoom,
     joinRoom,
+    joinSpectator,
     leaveRoom,
     sendMessage,
+    sendDanmaku,
     toggleReady,
     kickPlayer,
     updateRoomRules,

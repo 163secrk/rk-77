@@ -1,10 +1,9 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PlusCircle, LogIn, Sparkles, Clock, Users, Trophy, Settings } from 'lucide-react';
+import { PlusCircle, LogIn, Sparkles, Clock, Users, Trophy, Settings, Eye } from 'lucide-react';
 import { AvatarSelect } from '../components/AvatarSelect';
 import { useUserStore } from '../store/useUserStore';
 import { useRoom } from '../hooks/useRoom';
-import { checkRoomExists } from '../utils/socket';
+import { checkRoomForSpectator } from '../utils/socket';
 import { GameRules } from '../types';
 
 const DEFAULT_RULES: GameRules = {
@@ -14,15 +13,16 @@ const DEFAULT_RULES: GameRules = {
 };
 
 export default function Lobby() {
-  const navigate = useNavigate();
   const { nickname, avatar, setNickname, setAvatar } = useUserStore();
-  const { createRoom, joinRoom } = useRoom();
+  const { createRoom, joinRoom, joinSpectator } = useRoom();
 
   const [joinRoomId, setJoinRoomId] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [gameRules, setGameRules] = useState<GameRules>(DEFAULT_RULES);
   const [showRules, setShowRules] = useState(false);
+  const [showJoinChoice, setShowJoinChoice] = useState(false);
+  const [pendingRoomInfo, setPendingRoomInfo] = useState<{ roomId: string; isFull?: boolean; canSpectate?: boolean; spectatorCount?: number } | null>(null);
 
   const handleCreateRoom = (e: FormEvent) => {
     e.preventDefault();
@@ -52,14 +52,27 @@ export default function Lobby() {
     setJoinError('');
 
     try {
-      const result = await checkRoomExists(joinRoomId);
+      const result = await checkRoomForSpectator(joinRoomId);
       if (!result.exists) {
         setJoinError('房间不存在');
         setIsJoining(false);
         return;
       }
-      if (result.roomInfo?.isFull) {
-        setJoinError('房间已满');
+
+      if (result.roomInfo?.isFull && !result.canSpectate) {
+        setJoinError('房间已满且不允许观战');
+        setIsJoining(false);
+        return;
+      }
+
+      if (result.roomInfo?.isFull || result.canSpectate) {
+        setPendingRoomInfo({
+          roomId: joinRoomId.trim().toUpperCase(),
+          isFull: result.roomInfo?.isFull,
+          canSpectate: result.canSpectate,
+          spectatorCount: result.roomInfo?.spectatorCount,
+        });
+        setShowJoinChoice(true);
         setIsJoining(false);
         return;
       }
@@ -69,11 +82,35 @@ export default function Lobby() {
         nickname: nickname.trim(),
         avatar,
       });
-    } catch (error) {
+    } catch {
       setJoinError('检查房间失败，请稍后重试');
     } finally {
       setIsJoining(false);
     }
+  };
+
+  const handleJoinAsPlayer = () => {
+    if (pendingRoomInfo) {
+      joinRoom({
+        roomId: pendingRoomInfo.roomId,
+        nickname: nickname.trim(),
+        avatar,
+      });
+    }
+    setShowJoinChoice(false);
+    setPendingRoomInfo(null);
+  };
+
+  const handleJoinAsSpectator = () => {
+    if (pendingRoomInfo) {
+      joinSpectator({
+        roomId: pendingRoomInfo.roomId,
+        nickname: nickname.trim(),
+        avatar,
+      });
+    }
+    setShowJoinChoice(false);
+    setPendingRoomInfo(null);
   };
 
   return (
@@ -262,10 +299,93 @@ export default function Lobby() {
                     <LogIn size={20} />
                     {isJoining ? '检查中...' : '加入房间'}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!nickname.trim()) {
+                        alert('请输入昵称');
+                        return;
+                      }
+                      if (!joinRoomId.trim()) {
+                        setJoinError('请输入房间ID');
+                        return;
+                      }
+                      setPendingRoomInfo({
+                        roomId: joinRoomId.trim().toUpperCase(),
+                        canSpectate: true,
+                      });
+                      setShowJoinChoice(true);
+                    }}
+                    disabled={!nickname.trim() || isJoining || !joinRoomId.trim()}
+                    className="w-full mt-3 bg-emerald-900/50 hover:bg-emerald-800/50 disabled:opacity-50 disabled:cursor-not-allowed text-emerald-300 font-medium py-3 rounded-xl transition-all duration-200 border border-emerald-700/30 flex items-center justify-center gap-2"
+                  >
+                    <Eye size={18} />
+                    以观战模式进入
+                  </button>
                 </div>
               </form>
             </div>
           </div>
+
+          {showJoinChoice && pendingRoomInfo && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+              <div className="bg-emerald-950/95 backdrop-blur-xl rounded-3xl p-8 border border-emerald-700/50 shadow-2xl max-w-lg w-full animate-fadeIn">
+                <div className="text-center mb-8">
+                  <div className="text-5xl mb-4">🎮</div>
+                  <h2 className="text-2xl font-bold text-amber-200 mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    选择进入方式
+                  </h2>
+                  <p className="text-emerald-400">
+                    房间 {pendingRoomInfo.roomId}
+                    {pendingRoomInfo.spectatorCount !== undefined && pendingRoomInfo.spectatorCount > 0 && (
+                      <span className="ml-2 text-amber-400">
+                        👀 {pendingRoomInfo.spectatorCount} 人观战中
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <button
+                    onClick={handleJoinAsPlayer}
+                    disabled={pendingRoomInfo.isFull}
+                    className="w-full bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center justify-center gap-3"
+                  >
+                    <LogIn size={24} />
+                    <div className="text-left">
+                      <div className="text-lg">加入游戏</div>
+                      <div className="text-xs text-amber-200 opacity-80">
+                        {pendingRoomInfo.isFull ? '当前无可用席位' : '参与游戏，与其他玩家对战'}
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={handleJoinAsSpectator}
+                    disabled={!pendingRoomInfo.canSpectate}
+                    className="w-full bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center justify-center gap-3"
+                  >
+                    <Eye size={24} />
+                    <div className="text-left">
+                      <div className="text-lg">观战模式</div>
+                      <div className="text-xs text-emerald-200 opacity-80">观看比赛，发送仅观战可见的弹幕</div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowJoinChoice(false);
+                      setPendingRoomInfo(null);
+                    }}
+                    className="w-full bg-emerald-900/50 hover:bg-emerald-800/50 text-emerald-300 font-medium py-3 rounded-xl transition-all duration-200 border border-emerald-700/30"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="text-center mt-8 text-emerald-500 text-sm">
             <p>温馨提示：请妥善保管您的房间ID，不要分享给陌生人</p>

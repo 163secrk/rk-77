@@ -6,10 +6,11 @@ import { formatTime } from '../utils/socket';
 
 interface ChatPanelProps {
   messages: Message[];
-  onSendMessage: (content: string) => void;
+  onSendMessage?: (content: string) => void;
+  isSpectator?: boolean;
 }
 
-export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
+export function ChatPanel({ messages, onSendMessage, isSpectator = false }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { playerId } = useUserStore();
@@ -21,7 +22,7 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const content = input.trim();
-    if (content) {
+    if (content && onSendMessage) {
       onSendMessage(content);
       setInput('');
     }
@@ -98,26 +99,40 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
         <div ref={messagesEndRef} className="flex-shrink-0" />
       </div>
 
-      <form onSubmit={handleSubmit} className="p-3 border-t border-emerald-700/50 flex-shrink-0">
-        <div className="flex gap-2">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="输入消息... (Enter发送)"
-            className="flex-1 bg-emerald-900/50 border border-emerald-700/50 rounded-xl px-4 py-2 text-emerald-100 placeholder-emerald-500 resize-none focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all"
-            rows={1}
-            style={{ minHeight: '42px', maxHeight: '120px' }}
-          />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1 flex-shrink-0"
-          >
-            <Send size={18} />
-          </button>
+      {isSpectator ? (
+        <div className="p-3 border-t border-emerald-700/50 flex-shrink-0">
+          <div className="bg-emerald-900/30 rounded-xl px-4 py-3 text-center">
+            <p className="text-emerald-400 text-sm">
+              观战模式无法发送聊天消息
+            </p>
+            <p className="text-emerald-500 text-xs mt-1">
+              请使用底部弹幕功能与其他观战者互动
+            </p>
+          </div>
         </div>
-      </form>
+      ) : (
+        <form onSubmit={handleSubmit} className="p-3 border-t border-emerald-700/50 flex-shrink-0">
+          <div className="flex gap-2">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="输入消息... (Enter发送)"
+              className="flex-1 bg-emerald-900/50 border border-emerald-700/50 rounded-xl px-4 py-2 text-emerald-100 placeholder-emerald-500 resize-none focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all"
+              rows={1}
+              style={{ minHeight: '42px', maxHeight: '120px' }}
+              disabled={!onSendMessage}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || !onSendMessage}
+              className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1 flex-shrink-0"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

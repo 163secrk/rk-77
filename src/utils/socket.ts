@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { RoomInfo } from '../types';
 
 let socket: Socket | null = null;
 
@@ -32,6 +33,17 @@ export async function checkRoomExists(roomId: string): Promise<{ exists: boolean
   }
 }
 
+export async function checkRoomForSpectator(roomId: string): Promise<{ exists: boolean; canSpectate: boolean; roomInfo?: RoomInfo }> {
+  try {
+    const response = await fetch(`/api/rooms/${roomId.toUpperCase()}/spectate`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error checking room for spectator:', error);
+    return { exists: false, canSpectate: false };
+  }
+}
+
 export function formatTime(timestamp: number): string {
   const date = new Date(timestamp);
   return date.toLocaleTimeString('zh-CN', {
@@ -44,14 +56,13 @@ export function copyToClipboard(text: string): Promise<void> {
   return navigator.clipboard.writeText(text);
 }
 
-interface RoomInfo {
-  id: string;
-  name: string;
-  ownerId: string;
-  maxPlayers: number;
-  currentPlayers: number;
-  status: 'waiting' | 'playing' | 'finished';
-  players: [];
-  createdAt: string;
-  isFull?: boolean;
-}
+export const DANMAKU_COLORS = [
+  '#ffffff',
+  '#ff6b6b',
+  '#4ecdc4',
+  '#ffe66d',
+  '#95e1d3',
+  '#f38181',
+  '#aa96da',
+  '#fcbad3',
+];
