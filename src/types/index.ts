@@ -7,6 +7,22 @@ export interface Player {
   isReady: boolean;
   seatNumber: number;
   joinedAt: string;
+  score: number;
+}
+
+export interface GameRules {
+  thinkTime: number;
+  initialScore: number;
+  maxPlayers: number;
+}
+
+export interface ScoreUpdate {
+  playerId: string;
+  nickname: string;
+  avatar: string;
+  scoreChange: number;
+  newScore: number;
+  timestamp: number;
 }
 
 export interface Message {
@@ -48,6 +64,10 @@ export interface RoomState {
   isConnected: boolean;
   isKicked: boolean;
   isLeaving: boolean;
+  gameRules: GameRules;
+  gameStatus: 'waiting' | 'playing' | 'finished';
+  scoreHistory: ScoreUpdate[];
+  currentRound: number;
 }
 
 export const AVATARS = ['🦁', '🐯', '🐻', '🐼', '🦊', '🐰', '🐸', '🐵', '🐨', '🐮', '🐷', '🐴'];
@@ -56,6 +76,12 @@ export interface CreateRoomData {
   nickname: string;
   avatar: string;
   roomName?: string;
+  gameRules?: Partial<GameRules>;
+}
+
+export interface UpdateRoomRulesData {
+  roomId: string;
+  gameRules: Partial<GameRules>;
 }
 
 export interface JoinRoomData {

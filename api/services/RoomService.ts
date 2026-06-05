@@ -1,5 +1,5 @@
 import { MemoryStore } from '../store/MemoryStore.js';
-import { Room, Player, RoomInfo, Message } from '../types/index.js';
+import { Room, Player, RoomInfo, Message, GameRules } from '../types/index.js';
 import { generateRoomId, generateMessageId } from '../utils/generateId.js';
 
 export class RoomService {
@@ -9,22 +9,36 @@ export class RoomService {
     this.store = MemoryStore.getInstance();
   }
 
-  createRoom(ownerId: string, roomName?: string): Room {
+  private readonly DEFAULT_RULES: GameRules = {
+    thinkTime: 30,
+    initialScore: 100,
+    maxPlayers: 4,
+  };
+
+  createRoom(ownerId: string, roomName?: string, gameRules?: Partial<GameRules>): Room {
     let roomId: string;
     do {
       roomId = generateRoomId();
     } while (this.store.hasRoom(roomId));
 
+    const rules: GameRules = {
+      ...this.DEFAULT_RULES,
+      ...gameRules,
+    };
+
     const room: Room = {
       id: roomId,
       name: roomName || `${roomId} 号房间`,
       ownerId,
-      maxPlayers: 4,
+      maxPlayers: rules.maxPlayers,
       currentPlayers: 0,
       status: 'waiting',
       players: new Map(),
       messages: [],
       createdAt: new Date(),
+      gameRules: rules,
+      scoreHistory: [],
+      currentRound: 0,
     };
 
     this.store.addRoom(room);
@@ -46,6 +60,54 @@ export class RoomService {
       status: room.status,
       players: activePlayers,
       createdAt: room.createdAt.toISOString(),
+      gameRules: room.gameRules,
+      currentRound: room.currentRound,
+    };
+  }
+
+  updateGameRules(roomId: string, rules: Partial<GameRules>): GameRules | null {
+    const room = this.store.getRoom(roomId);
+    if (!room) return null;
+
+    room.gameRules = {
+      ...room.gameRules,
+      ...rules,
+    };
+
+    if (rules.maxPlayers !== undefined) {
+      room.maxPlayers = rules.maxPlayers;
+    }
+
+    return room.gameRules;
+  }
+
+  canStartGame(roomId: string): boolean {
+    const room = this.store.getRoom(roomId);
+    if (!room) return false;
+    if (room.status !== 'waiting') return false;
+
+    const activePlayers = Array.from(room.players.values()).filter(p => !p.isDisconnected);
+    if (activePlayers.length < 2) return false;
+
+    const allReady = activePlayers.every(p => p.isReady);
+    return allReady;
+  }
+
+  startGame(roomId: string): { round: number; players: Player[] } | null {
+    const room = this.store.getRoom(roomId);
+    if (!room) return null;
+
+    room.status = 'playing';
+    room.currentRound += 1;
+    room.scoreHistory = [];
+
+    const activePlayers = Array.from(room.players.values())
+      .filter(p => !p.isDisconnected)
+      .sort((a, b) => a.seatNumber - b.seatNumber);
+
+    return {
+      round: room.currentRound,
+      players: activePlayers,
     };
   }
 

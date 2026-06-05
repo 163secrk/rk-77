@@ -1,5 +1,11 @@
 import { create } from 'zustand';
-import { Player, Message, RoomState } from '../types';
+import { Player, Message, RoomState, GameRules, ScoreUpdate } from '../types';
+
+const DEFAULT_GAME_RULES: GameRules = {
+  thinkTime: 30,
+  initialScore: 100,
+  maxPlayers: 4,
+};
 
 interface RoomStore extends RoomState {
   setRoomId: (roomId: string | null) => void;
@@ -14,6 +20,11 @@ interface RoomStore extends RoomState {
   setIsConnected: (connected: boolean) => void;
   setIsKicked: (isKicked: boolean) => void;
   setIsLeaving: (isLeaving: boolean) => void;
+  setGameRules: (rules: Partial<GameRules>) => void;
+  setGameStatus: (status: RoomState['gameStatus']) => void;
+  addScoreUpdate: (update: ScoreUpdate) => void;
+  setScoreHistory: (history: ScoreUpdate[]) => void;
+  setCurrentRound: (round: number) => void;
   resetRoom: () => void;
 }
 
@@ -26,6 +37,10 @@ export const useRoomStore = create<RoomStore>((set) => ({
   isConnected: false,
   isKicked: false,
   isLeaving: false,
+  gameRules: DEFAULT_GAME_RULES,
+  gameStatus: 'waiting',
+  scoreHistory: [],
+  currentRound: 0,
 
   setRoomId: (roomId) => set({ roomId }),
   setRoomName: (roomName) => set({ roomName }),
@@ -57,6 +72,17 @@ export const useRoomStore = create<RoomStore>((set) => ({
   setIsConnected: (isConnected) => set({ isConnected }),
   setIsKicked: (isKicked) => set({ isKicked }),
   setIsLeaving: (isLeaving) => set({ isLeaving }),
+  setGameRules: (rules) =>
+    set((state) => ({
+      gameRules: { ...state.gameRules, ...rules },
+    })),
+  setGameStatus: (gameStatus) => set({ gameStatus }),
+  addScoreUpdate: (update) =>
+    set((state) => ({
+      scoreHistory: [...state.scoreHistory, update],
+    })),
+  setScoreHistory: (scoreHistory) => set({ scoreHistory }),
+  setCurrentRound: (currentRound) => set({ currentRound }),
   resetRoom: () =>
     set({
       roomId: null,
@@ -67,5 +93,9 @@ export const useRoomStore = create<RoomStore>((set) => ({
       isConnected: false,
       isKicked: false,
       isLeaving: false,
+      gameRules: DEFAULT_GAME_RULES,
+      gameStatus: 'waiting',
+      scoreHistory: [],
+      currentRound: 0,
     }),
 }));

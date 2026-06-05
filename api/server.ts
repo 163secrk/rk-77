@@ -35,6 +35,9 @@ io.on('connection', (socket) => {
   socket.on('room:join', (data) => roomController.handleJoinRoom(socket, data));
   socket.on('room:leave', (data) => roomController.handleLeaveRoom(socket, data));
   socket.on('room:getPlayers', (data) => roomController.handleGetPlayers(socket, data));
+  socket.on('room:rules:update', (data) => roomController.handleUpdateRoomRules(socket, data));
+  socket.on('game:start', (data) => roomController.handleStartGame(socket, data));
+  socket.on('score:update', (data) => roomController.handleUpdateScore(socket, data));
 
   socket.on('player:ready', (data) => roomController.handleToggleReady(socket, data));
   socket.on('player:getInfo', () => playerController.handleGetPlayerInfo(socket));

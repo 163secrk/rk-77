@@ -9,6 +9,22 @@ export interface Player {
   joinedAt: Date;
   isDisconnected?: boolean;
   disconnectedAt?: Date;
+  score: number;
+}
+
+export interface GameRules {
+  thinkTime: number;
+  initialScore: number;
+  maxPlayers: number;
+}
+
+export interface ScoreUpdate {
+  playerId: string;
+  nickname: string;
+  avatar: string;
+  scoreChange: number;
+  newScore: number;
+  timestamp: Date;
 }
 
 export interface Message {
@@ -32,6 +48,9 @@ export interface Room {
   players: Map<string, Player>;
   messages: Message[];
   createdAt: Date;
+  gameRules: GameRules;
+  scoreHistory: ScoreUpdate[];
+  currentRound: number;
 }
 
 export interface RoomInfo {
@@ -43,12 +62,34 @@ export interface RoomInfo {
   status: 'waiting' | 'playing' | 'finished';
   players: Player[];
   createdAt: string;
+  gameRules: GameRules;
+  currentRound: number;
 }
 
 export interface CreateRoomData {
   nickname: string;
   avatar: string;
   roomName?: string;
+  gameRules?: Partial<GameRules>;
+}
+
+export interface UpdateRoomRulesData {
+  roomId: string;
+  gameRules: Partial<GameRules>;
+}
+
+export interface RoomRulesUpdatedEvent {
+  gameRules: GameRules;
+}
+
+export interface GameStartedEvent {
+  round: number;
+  players: Player[];
+}
+
+export interface ScoreUpdatedEvent {
+  updates: ScoreUpdate[];
+  players: Player[];
 }
 
 export interface PlayerJoinData {

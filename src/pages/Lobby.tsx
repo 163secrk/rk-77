@@ -1,10 +1,17 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, LogIn, Sparkles } from 'lucide-react';
+import { PlusCircle, LogIn, Sparkles, Clock, Users, Trophy, Settings } from 'lucide-react';
 import { AvatarSelect } from '../components/AvatarSelect';
 import { useUserStore } from '../store/useUserStore';
 import { useRoom } from '../hooks/useRoom';
 import { checkRoomExists } from '../utils/socket';
+import { GameRules } from '../types';
+
+const DEFAULT_RULES: GameRules = {
+  thinkTime: 30,
+  initialScore: 100,
+  maxPlayers: 4,
+};
 
 export default function Lobby() {
   const navigate = useNavigate();
@@ -14,6 +21,8 @@ export default function Lobby() {
   const [joinRoomId, setJoinRoomId] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState('');
+  const [gameRules, setGameRules] = useState<GameRules>(DEFAULT_RULES);
+  const [showRules, setShowRules] = useState(false);
 
   const handleCreateRoom = (e: FormEvent) => {
     e.preventDefault();
@@ -24,6 +33,7 @@ export default function Lobby() {
     createRoom({
       nickname: nickname.trim(),
       avatar,
+      gameRules,
     });
   };
 
@@ -132,10 +142,71 @@ export default function Lobby() {
                       <Sparkles size={14} className="text-amber-400" />
                       <span>自动生成6位房间ID</span>
                     </div>
-                    <div className="flex items-center gap-2 text-emerald-300 text-sm mt-2">
-                      <span>👥</span>
-                      <span>最多支持4人同时游戏</span>
-                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowRules(!showRules)}
+                      className="flex items-center gap-2 text-amber-400 text-sm mt-3 hover:text-amber-300 transition-colors"
+                    >
+                      <Settings size={14} />
+                      <span>{showRules ? '收起规则设置' : '自定义游戏规则'}</span>
+                    </button>
+
+                    {showRules && (
+                      <div className="mt-4 space-y-4 bg-emerald-950/50 rounded-xl p-4 border border-emerald-700/30">
+                        <div>
+                          <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                            <Clock size={14} />
+                            <span>每局思考时间（秒）</span>
+                          </label>
+                          <select
+                            value={gameRules.thinkTime}
+                            onChange={(e) => setGameRules({ ...gameRules, thinkTime: Number(e.target.value) })}
+                            className="w-full bg-emerald-900/50 border border-emerald-700/50 rounded-lg px-3 py-2 text-emerald-100 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/30 transition-all"
+                          >
+                            <option value={15}>15秒</option>
+                            <option value={30}>30秒</option>
+                            <option value={60}>60秒</option>
+                            <option value={120}>120秒</option>
+                            <option value={300}>不限时</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                            <Trophy size={14} />
+                            <span>初始底分</span>
+                          </label>
+                          <select
+                            value={gameRules.initialScore}
+                            onChange={(e) => setGameRules({ ...gameRules, initialScore: Number(e.target.value) })}
+                            className="w-full bg-emerald-900/50 border border-emerald-700/50 rounded-lg px-3 py-2 text-emerald-100 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/30 transition-all"
+                          >
+                            <option value={50}>50分</option>
+                            <option value={100}>100分</option>
+                            <option value={200}>200分</option>
+                            <option value={500}>500分</option>
+                            <option value={1000}>1000分</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                            <Users size={14} />
+                            <span>最大人数</span>
+                          </label>
+                          <select
+                            value={gameRules.maxPlayers}
+                            onChange={(e) => setGameRules({ ...gameRules, maxPlayers: Number(e.target.value) })}
+                            className="w-full bg-emerald-900/50 border border-emerald-700/50 rounded-lg px-3 py-2 text-emerald-100 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/30 transition-all"
+                          >
+                            <option value={2}>2人</option>
+                            <option value={3}>3人</option>
+                            <option value={4}>4人</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <button

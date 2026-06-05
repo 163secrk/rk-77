@@ -7,13 +7,35 @@ interface RoomHeaderProps {
   playerCount: number;
   maxPlayers: number;
   onLeave: () => void;
+  hideTitle?: boolean;
 }
 
-export function RoomHeader({ roomId, roomName, playerCount, maxPlayers, onLeave }: RoomHeaderProps) {
+export function RoomHeader({ roomId, roomName, playerCount, maxPlayers, onLeave, hideTitle = false }: RoomHeaderProps) {
   const handleCopy = async () => {
     await copyToClipboard(roomId);
     alert('房间ID已复制到剪贴板！');
   };
+
+  if (hideTitle) {
+    return (
+      <>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 bg-emerald-950/50 px-3 py-1 rounded-lg text-amber-300 font-mono text-sm hover:bg-emerald-950 transition-colors group"
+        >
+          <span className="text-emerald-300 text-sm mr-1">房间ID:</span>
+          <span className="tracking-widest">{roomId}</span>
+          <Copy size={14} className="opacity-70 group-hover:opacity-100" />
+        </button>
+        <div className="flex items-center gap-2 bg-emerald-950/50 px-3 py-1 rounded-lg">
+          <Users size={14} className="text-emerald-400" />
+          <span className="text-amber-100 text-sm font-medium">
+            {playerCount} / {maxPlayers}
+          </span>
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-900 px-6 py-4 shadow-xl border-b border-amber-500/30">

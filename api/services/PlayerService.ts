@@ -1,5 +1,5 @@
 import { MemoryStore } from '../store/MemoryStore.js';
-import { Player, Room } from '../types/index.js';
+import { Player, Room, GameRules, ScoreUpdate } from '../types/index.js';
 import { generatePlayerId } from '../utils/generateId.js';
 import { RoomService } from './RoomService.js';
 
@@ -14,6 +14,8 @@ export class PlayerService {
 
   createPlayer(socketId: string, nickname: string, avatar: string, roomId: string): Player {
     const seatNumber = this.roomService.getNextSeatNumber(roomId);
+    const room = this.store.getRoom(roomId);
+    const initialScore = room?.gameRules.initialScore ?? 100;
 
     const player: Player = {
       id: generatePlayerId(),
@@ -24,10 +26,44 @@ export class PlayerService {
       isReady: false,
       seatNumber,
       joinedAt: new Date(),
+      score: initialScore,
     };
 
     this.store.addPlayerToRoom(roomId, player);
     return player;
+  }
+
+  resetPlayerScores(roomId: string): void {
+    const room = this.store.getRoom(roomId);
+    if (!room) return;
+
+    const initialScore = room.gameRules.initialScore;
+    for (const player of room.players.values()) {
+      player.score = initialScore;
+      this.store.updatePlayer(player);
+    }
+  }
+
+  updatePlayerScore(playerId: string, roomId: string, scoreChange: number): ScoreUpdate | null {
+    const room = this.store.getRoom(roomId);
+    if (!room) return null;
+
+    const player = room.players.get(playerId);
+    if (!player) return null;
+
+    player.score += scoreChange;
+    this.store.updatePlayer(player);
+
+    const update: ScoreUpdate = {
+      playerId: player.id,
+      nickname: player.nickname,
+      avatar: player.avatar,
+      scoreChange,
+      newScore: player.score,
+      timestamp: new Date(),
+    };
+
+    return update;
   }
 
   getPlayer(socketId: string): Player | undefined {
